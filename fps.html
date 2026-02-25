@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FPS Test</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --fg: #e8e8ec;
+      --muted: #5a5a6e;
+      --accent: #00ffa3;
+      --accent-dim: rgba(0, 255, 163, 0.15);
+      --card: rgba(20, 20, 30, 0.8);
+      --border: rgba(255, 255, 255, 0.08);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      font-family: 'Inter', sans-serif;
+      color: var(--fg);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Фоновая сетка */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: 
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+    }
+
+    /* Фоновое свечение */
+    .glow {
+      position: fixed;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, var(--accent-dim) 0%, transparent 70%);
+      pointer-events: none;
+      opacity: 0.5;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 40px;
+    }
+
+    /* FPS дисплей */
+    .fps-display {
+      font-family: 'Space Mono', monospace;
+      text-align: center;
+    }
+
+    .fps-value {
+      font-size: clamp(64px, 15vw, 120px);
+      font-weight: 700;
+      line-height: 1;
+      color: var(--accent);
+      text-shadow: 0 0 40px var(--accent-dim);
+      transition: color 0.2s ease;
+    }
+
+    .fps-value.low {
+      color: #ff6b6b;
+      text-shadow: 0 0 40px rgba(255, 107, 107, 0.3);
+    }
+
+    .fps-value.medium {
+      color: #ffd93d;
+      text-shadow: 0 0 40px rgba(255, 217, 61, 0.3);
+    }
+
+    .fps-label {
+      font-size: 14px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 4px;
+      margin-top: 8px;
+    }
+
+    /* Площадка для анимации */
+    .arena {
+      width: min(90vw, 600px);
+      height: 200px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(10px);
+    }
+
+    .arena::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, var(--accent-dim) 0%, transparent 50%, var(--accent-dim) 100%);
+      opacity: 0.3;
+    }
+
+    /* Анимируемый блок */
+    .moving-block {
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, var(--accent) 0%, #00cc82 100%);
+      border-radius: 8px;
+      position: absolute;
+      top: 50%;
+      left: 0;
+      transform: translate(-50%, -50%);
+      box-shadow: 
+        0 0 20px rgba(0, 255, 163, 0.4),
+        0 4px 12px rgba(0, 0, 0, 0.3);
+      will-change: transform;
+    }
+
+    /* Статистика */
+    .stats {
+      display: flex;
+      gap: 32px;
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .stat-value {
+      color: var(--fg);
+      font-size: 16px;
+    }
+
+    /* Кнопки управления */
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .btn {
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      padding: 10px 20px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--card);
+      color: var(--fg);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--accent);
+    }
+
+    .btn:active {
+      transform: scale(0.96);
+    }
+
+    .btn.active {
+      background: var(--accent);
+      color: var(--bg);
+      border-color: var(--accent);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .fps-value {
+        transition: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="glow"></div>
+  
+  <div class="container">
+    <div class="fps-display">
+      <div class="fps-value" id="fpsValue">0</div>
+      <div class="fps-label">Frames Per Second</div>
+    </div>
+
+    <div class="arena">
+      <div class="moving-block" id="block"></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <span class="stat-value" id="frameCount">0</span>
+        <span>Frames</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" id="avgFps">0</span>
+        <span>Avg FPS</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" id="minFps">60</span>
+        <span>Min</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" id="maxFps">0</span>
+        <span>Max</span>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn active" id="btnPlay">Play</button>
+      <button class="btn" id="btnReset">Reset Stats</button>
+    </div>
+  </div>
+
+  <script>
+    // DOM элементы
+    const fpsValueEl = document.getElementById('fpsValue');
+    const blockEl = document.getElementById('block');
+    const frameCountEl = document.getElementById('frameCount');
+    const avgFpsEl = document.getElementById('avgFps');
+    const minFpsEl = document.getElementById('minFps');
+    const maxFpsEl = document.getElementById('maxFps');
+    const btnPlay = document.getElementById('btnPlay');
+    const btnReset = document.getElementById('btnReset');
+
+    // Состояние
+    let isPlaying = true;
+    let frameCount = 0;
+    let lastTime = performance.now();
+    let fps = 0;
+    
+    // Статистика
+    let fpsHistory = [];
+    let minFps = 60;
+    let maxFps = 0;
+
+    // Параметры анимации блока
+    let position = 0;
+    let direction = 1;
+    const speed = 200; // пикселей в секунду
+
+    // Получаем ширину арены
+    function getArenaWidth() {
+      const arena = blockEl.parentElement;
+      return arena.offsetWidth - 60; // 60 = ширина блока
+    }
+
+    // Главный цикл
+    function tick(currentTime) {
+      if (!isPlaying) {
+        requestAnimationFrame(tick);
+        return;
+      }
+
+      // Вычисляем FPS
+      const delta = currentTime - lastTime;
+      lastTime = currentTime;
+      
+      fps = Math.round(1000 / delta);
+      frameCount++;
+
+      // Обновляем историю FPS
+      fpsHistory.push(fps);
+      if (fpsHistory.length > 60) fpsHistory.shift();
+
+      // Обновляем мин/макс
+      if (fps > 0 && fps < 1000) {
+        if (fps < minFps) minFps = fps;
+        if (fps > maxFps) maxFps = fps;
+      }
+
+      // Двигаем блок через transform
+      const arenaWidth = getArenaWidth();
+      position += direction * speed * (delta / 1000);
+      
+      if (position >= arenaWidth) {
+        position = arenaWidth;
+        direction = -1;
+      } else if (position <= 0) {
+        position = 0;
+        direction = 1;
+      }
+
+      blockEl.style.transform = `translate(${position - 30}px, -50%)`;
+
+      // Обновляем UI (не каждый кадр для производительности)
+      if (frameCount % 3 === 0) {
+        updateUI();
+      }
+
+      requestAnimationFrame(tick);
+    }
+
+    function updateUI() {
+      // FPS
+      fpsValueEl.textContent = fps;
+      
+      // Цвет в зависимости от FPS
+      fpsValueEl.classList.remove('low', 'medium');
+      if (fps < 30) {
+        fpsValueEl.classList.add('low');
+      } else if (fps < 55) {
+        fpsValueEl.classList.add('medium');
+      }
+
+      // Статистика
+      frameCountEl.textContent = frameCount;
+      
+      const avg = Math.round(fpsHistory.reduce((a, b) => a + b, 0) / fpsHistory.length);
+      avgFpsEl.textContent = avg || 0;
+      minFpsEl.textContent = minFps;
+      maxFpsEl.textContent = maxFps;
+    }
+
+    // Управление
+    btnPlay.addEventListener('click', () => {
+      isPlaying = !isPlaying;
+      btnPlay.textContent = isPlaying ? 'Pause' : 'Play';
+      btnPlay.classList.toggle('active', isPlaying);
+      if (isPlaying) {
+        lastTime = performance.now();
+      }
+    });
+
+    btnReset.addEventListener('click', () => {
+      frameCount = 0;
+      fpsHistory = [];
+      minFps = 60;
+      maxFps = 0;
+      position = 0;
+      direction = 1;
+      updateUI();
+    });
+
+    // Запуск
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>
