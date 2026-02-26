@@ -2,79 +2,137 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>FPS Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Touch Drag Test</title>
   <style>
     body {
       margin: 0;
-      min-height: 100vh;
-      background: #111;
+      background: #222;
+      height: 100vh;
+      overflow: hidden; /* Отключаем скролл страницы */
+      font-family: Arial, sans-serif;
+    }
+    
+    #fps {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      color: #0f0;
+      font-size: 40px;
+      z-index: 100;
+      pointer-events: none;
+    }
+
+    #box {
+      width: 100px;
+      height: 100px;
+      background: #f00;
+      position: absolute;
+      top: 0;
+      left: 0;
+      border-radius: 10px;
+      color: #fff;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
-      font-family: Arial, sans-serif;
-      color: #fff;
-    }
-    #fps {
-      font-size: 80px;
       font-weight: bold;
-      color: #0f0;
-    }
-    #arena {
-      width: 400px;
-      height: 100px;
-      background: #222;
-      border: 1px solid #444;
-      position: relative;
-      margin-top: 20px;
-    }
-    #block {
-      width: 40px;
-      height: 40px;
-      background: #0f0;
-      position: absolute;
-      top: 30px;
+      cursor: grab;
+      
+      /* ГЛАВНОЕ: отключает браузерную обработку жестов (скролл/зум) для этого элемента */
+      touch-action: none;
     }
   </style>
 </head>
 <body>
-  <div id="fps">0</div>
-  <div id="arena">
-    <div id="block"></div>
-  </div>
+
+  <div id="fps">60</div>
+  <div id="box">DRAG</div>
+
   <script>
     var fpsEl = document.getElementById('fps');
-    var blockEl = document.getElementById('block');
+    var box = document.getElementById('box');
     
+    // Переменные для FPS
     var lastTime = Date.now();
-    var frameCount = 0;
-    var fps = 0;
+    var frames = 0;
     
-    var pos = 0;
-    var dir = 1;
-    
+    // Переменные для перетаскивания
+    var isDragging = false;
+    var startX = 0;
+    var startY = 0;
+    var currentX = 50;
+    var currentY = 50;
+
+    // 1. Измеритель FPS
     function loop() {
       var now = Date.now();
-      frameCount++;
+      frames++;
       
       if (now - lastTime >= 1000) {
-        fps = frameCount;
-        frameCount = 0;
+        fpsEl.innerHTML = frames;
+        frames = 0;
         lastTime = now;
-        fpsEl.innerHTML = fps;
       }
-      
-      pos += dir * 2;
-      
-      if (pos >= 360) dir = -1;
-      if (pos <= 0) dir = 1;
-      
-      blockEl.style.transform = 'translateX(' + pos + 'px)';
       
       requestAnimationFrame(loop);
     }
-    
     loop();
+
+    // 2. Обработка Touch событий
+    
+    box.addEventListener('touchstart', function(e) {
+      isDragging = true;
+      
+      // Запоминаем, где палец встал относительно экрана
+      var touch = e.touches[0];
+      startX = touch.clientX - currentX;
+      startY = touch.clientY - currentY;
+      
+      box.style.background = '#a00'; // Визуальный фидбек
+    }, { passive: false });
+
+    box.addEventListener('touchmove', function(e) {
+      if (!isDragging) return;
+      
+      // ОБЯЗАТЕЛЬНО: блокируем скролл страницы, иначе будут лаги
+      e.preventDefault(); 
+      
+      var touch = e.touches[0];
+      
+      // Вычисляем новую позицию
+      currentX = touch.clientX - startX;
+      currentY = touch.clientY - startY;
+      
+      // Двигаем блок
+      box.style.transform = 'translate3d(' + currentX + 'px, ' + currentY + 'px, 0)';
+      
+    }, { passive: false }); // passive: false нужен, чтобы работал preventDefault
+
+    box.addEventListener('touchend', function(e) {
+      isDragging = false;
+      box.style.background = '#f00';
+    });
+    
+    // Дублируем логику для мыши (чтобы тестить на компе)
+    box.addEventListener('mousedown', function(e) {
+      isDragging = true;
+      startX = e.clientX - currentX;
+      startY = e.clientY - currentY;
+      box.style.background = '#a00';
+    });
+    
+    window.addEventListener('mousemove', function(e) {
+      if (!isDragging) return;
+      currentX = e.clientX - startX;
+      currentY = e.clientY - startY;
+      box.style.transform = 'translate3d(' + currentX + 'px, ' + currentY + 'px, 0)';
+    });
+    
+    window.addEventListener('mouseup', function() {
+      isDragging = false;
+      box.style.background = '#f00';
+    });
+
   </script>
 </body>
 </html>
