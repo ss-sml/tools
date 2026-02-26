@@ -105,7 +105,7 @@
       currentY = touch.clientY - startY;
       
       // Двигаем блок
-      box.style.transform = 'translate(' + currentX + 'px, ' + currentY + 'px, 0)';
+      box.style.transform = 'translate(' + currentX + 'px, ' + currentY + 'px)';
       
     }, { passive: false }); // passive: false нужен, чтобы работал preventDefault
 
@@ -126,7 +126,7 @@
       if (!isDragging) return;
       currentX = e.clientX - startX;
       currentY = e.clientY - startY;
-      box.style.transform = 'translate(' + currentX + 'px, ' + currentY + 'px, 0)';
+      box.style.transform = 'translate(' + currentX + 'px, ' + currentY + 'px)';
     });
     
     window.addEventListener('mouseup', function() {
